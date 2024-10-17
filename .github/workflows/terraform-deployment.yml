@@ -60,6 +60,10 @@ jobs:
           name: tfplan-${{ steps.short-sha.outputs.sha }}
           path: tfplan-${{ steps.short-sha.outputs.sha }}
           retention-days: 1
+    outputs:
+      short-sha: ${{ steps.short-sha.outputs.sha }}
+      plan-outcome: ${{ steps.plan.outcome }}
+      plan-stdout: ${{ steps.plan.outputs.stdout }}
 
   apply:
     name: Apply
