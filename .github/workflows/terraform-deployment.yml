@@ -1,0 +1,115 @@
+name: Terraform deployment
+
+permissions:
+  actions: write # This is required for uploading and downloading artifacts
+  contents: read # This is required for actions/checkout
+  id-token: write # This is required for requesting the JWT
+  issues: write # This is required for creating issues to approve the apply
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to run deployment against
+        type: environment
+        required: true
+
+jobs:
+  plan:
+    name: Plan
+    needs: start-notify
+    runs-on: ubuntu-latest
+
+    outputs:
+      short-sha: ${{ steps.short-sha.outputs.sha }}
+      plan-outcome: ${{ steps.plan.outcome }}
+      plan-stdout: ${{ steps.plan.outputs.stdout }}
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find terraform version
+        id: maxVer
+        uses: clowdhaus/terraform-min-max@v1.2.4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ steps.maxVer.outputs.maxVersion }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-region: ${{ secrets.REGION }}
+          role-to-assume: ${{ secrets[format('ROLE_ARN_{0}', inputs.environment )] }}
+
+      - name: Terraform init
+        run: terraform init -backend-config=config/backend/${{ inputs.environment }}.tfbackend
+
+      - uses: benjlevesque/short-sha@v2.1
+        id: short-sha
+
+      - name: Terraform plan
+        id: plan
+        run: terraform plan -input=false -no-color -out=tfplan-${{ steps.short-sha.outputs.sha }} -var-file=config/environments/${{ inputs.environment }}.tfvars
+
+      - name: Archive plan
+        uses: actions/upload-artifact@v3
+        with:
+          name: tfplan-${{ steps.short-sha.outputs.sha }}
+          path: tfplan-${{ steps.short-sha.outputs.sha }}
+          retention-days: 1
+
+  apply:
+    name: Apply
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    needs: plan
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Wait for manual approval
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: ${{ secrets.APPROVERS }}
+          minimum-approvals: 1
+          exclude-workflow-initiator-as-approver: false
+          issue-title: Deploying ${{ needs.plan.outputs.short-sha }} to ${{ inputs.environment }} infrastructure
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find terraform version
+        id: maxVer
+        uses: clowdhaus/terraform-min-max@v1.2.4
+
+      - name: Terraform setup
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ steps.maxVer.outputs.maxVersion }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-region: ${{ secrets.REGION }}
+          role-to-assume: ${{ secrets[format('ROLE_ARN_{0}', inputs.environment )] }}
+
+      - name: Terraform init
+        run: terraform init -backend-config=config/backend/${{ inputs.environment }}.tfbackend
+
+      - name: Download tfplan
+        uses: actions/download-artifact@v3
+        with:
+          name: tfplan-${{ needs.plan.outputs.short-sha }}
+
+      - name: Terraform apply
+        run: terraform apply -auto-approve tfplan-${{ needs.plan.outputs.short-sha }}
