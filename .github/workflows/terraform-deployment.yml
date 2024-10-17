@@ -21,7 +21,6 @@ on:
 jobs:
   plan:
     name: Plan
-    needs: start-notify
     runs-on: ubuntu-latest
 
     outputs:
