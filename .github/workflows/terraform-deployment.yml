@@ -12,6 +12,10 @@ on:
       environment:
         description: Environment to run deployment against
         type: environment
+        options:
+          - develop
+          - staging
+          - production
         required: true
 
 jobs:
