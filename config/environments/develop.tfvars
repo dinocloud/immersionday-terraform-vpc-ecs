@@ -1,6 +1,6 @@
 # Common vars
-team        = "infra"
-component   = "TF"
+team        = "damian"
+component   = "tf"
 region      = "us-east-1"
 environment = "develop"
 

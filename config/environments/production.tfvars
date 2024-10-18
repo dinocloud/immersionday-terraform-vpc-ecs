@@ -1,6 +1,6 @@
 # Common vars
-team        = "product"
-component   = "complete"
+team        = "damian"
+component   = "tf"
 region      = "us-east-1"
 environment = "production"
 
