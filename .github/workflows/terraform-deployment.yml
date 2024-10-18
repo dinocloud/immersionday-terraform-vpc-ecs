@@ -76,15 +76,6 @@ jobs:
         shell: bash
 
     steps:
-      - name: Wait for manual approval
-        uses: trstringer/manual-approval@v1
-        with:
-          secret: ${{ github.TOKEN }}
-          approvers: ${{ secrets.APPROVERS }}
-          minimum-approvals: 1
-          exclude-workflow-initiator-as-approver: false
-          issue-title: Deploying to ${{ inputs.environment }} infrastructure
-
       - name: Checkout
         uses: actions/checkout@v4
 
