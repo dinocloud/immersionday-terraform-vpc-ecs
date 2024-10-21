@@ -93,6 +93,8 @@ jobs:
         with:
           aws-region: ${{ secrets.REGION }}
           role-to-assume: ${{ secrets[format('ROLE_ARN_{0}', inputs.environment )] }}
+        # aws-access-key-id: ${{ secrets[format('AWS_ACCESS_KEY_ID_{0}', inputs.environment )] }}
+        # aws-secret-access-key: ${{ secrets.[format('AWS_SECRET_ACCESS_KEY_{0}', inputs.environment )] }}
 
       - name: Terraform init
         run: terraform init -backend-config=config/backend/${{ inputs.environment }}.tfbackend
